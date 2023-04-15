@@ -2,6 +2,8 @@ package com.study.async.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.task.TaskExecutor;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.util.concurrent.*;
 
@@ -32,6 +34,18 @@ public class ThreadConfig {
         // 추가 요청 발생 시 thread 생성. pool에서 관리하다가, 일정 시간 동안 사용 안 할 시 제거.
         // 큐를 사용 안 하고 즉시 스레드를 만들어서 사용하기 때문에 트래픽이 몰릴 경우 스레드가 폭발적으로 증가할 수 있음.
         return Executors.newCachedThreadPool();
+    }
+
+    @Bean
+    public TaskExecutor taskExecutor_spring(){
+        ThreadPoolTaskExecutor te = new ThreadPoolTaskExecutor();
+
+        // 10개 쓰레드를 다 쓰고 있으면, 먼저 Queue를 채우고, 그래도 부족하면 그 때 MaxPoolSize를 늘림.
+        te.setCorePoolSize(10);
+        te.setMaxPoolSize(100);
+        te.setQueueCapacity(50);
+        te.initialize();
+        return te;
     }
 
 

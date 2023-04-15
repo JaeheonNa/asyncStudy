@@ -31,7 +31,12 @@ public class AsyncController {
     }
 
     @GetMapping("completableFuture")
-    public Map asyncWithCompletableFuture() throws ExecutionException, InterruptedException {
-        return asyncService.asyncWithFuture();
+    public List asyncWithCompletableFuture() throws ExecutionException, InterruptedException {
+        return asyncService.asyncWithCompletableFuture();
+    }
+
+    @GetMapping("springAsync")
+    public List asyncWithSpringAnnotation() throws ExecutionException, InterruptedException {
+        return asyncService.asyncWithSpringAnnotation();
     }
 }

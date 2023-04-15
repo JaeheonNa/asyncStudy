@@ -113,6 +113,18 @@ public class AsyncService {
         return result1;
     }
 
+    public List asyncWithSpringAnnotation() throws ExecutionException, InterruptedException {
+        List<String> stringList = new ArrayList<>();
+        // @Async는 리턴타입을 void, Future, ListenableFuture, CompletableFuture만 지원.
+        // 리턴 시 특별한 객체로 감싸야 정상 동작.
+        // 만약 다른 리턴타입을 정의할 경우 받아오는 서브 스레드가 결과값을 주기 전에 메인스레드가 확인하고 지나가버림.
+        // 즉, wait-notify 과정이 없어지는 것.
+        // @Async는 호출할 때마다 새로운 스레드를 생성함. 스레드 풀을 사용하는 게 아님. ******
+        // 스레드풀을 사용하려면 @Async("빈네임")으로.
+        CompletableFuture<List<String>> returnStringList = asyncRepository.getWithCompletableFuture(stringList);
+        Future<List<String>> returnStringList1 = asyncRepository.getWithFuture(returnStringList.get());
+        return returnStringList1.get();
+    }
 
 
 }
