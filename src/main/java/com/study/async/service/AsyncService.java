@@ -1,8 +1,9 @@
-package com.study.async.controller;
+package com.study.async.service;
 
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+
+import com.study.async.repository.AsyncRepository;
+import lombok.AllArgsConstructor;
+import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -10,12 +11,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
 
-@RequestMapping
-@RestController
-public class Controller {
+@Service
+@AllArgsConstructor
+public class AsyncService {
 
-    @GetMapping("synchronized")
-    public void asyncWithSynchronized() throws InterruptedException {
+    private final AsyncRepository asyncRepository;
+
+    public Map asyncWithSynchronized() throws InterruptedException {
         Map<String, String> result = new HashMap();
 
         // subThread
@@ -23,8 +25,7 @@ public class Controller {
             @Override
             public void run() {
                 // subThread 동작 시작
-                String getAsyncResult = "subThread result";
-                result.put("getAsyncResult", getAsyncResult);
+                asyncRepository.getRunnableMap(result);
                 // mainThread에게 동작 재개 노티.
                 synchronized (result){
                     result.notify();
@@ -39,11 +40,10 @@ public class Controller {
         // result.get("getAsyncResult")은 null 상태.
         result.wait();
         System.out.println(result.get("getAsyncResult"));
+        return result;
     }
 
-
-    @GetMapping("future")
-    public void asyncWithFuture() throws ExecutionException, InterruptedException {
+    public Map asyncWithFuture() throws ExecutionException, InterruptedException {
 
         // Runnable과 달리 리턴값을 가짐.
         // Synchronize 하지 않아도 알아서 wait-notify 됨.
@@ -52,18 +52,16 @@ public class Controller {
         Callable<Map> callable = new Callable<Map>() {
             @Override
             public Map call() throws Exception {
-                Future<Map> futureMap =Executors.newSingleThreadExecutor().submit(new Callable<Map>() {
+                Map<String, String> map = new HashMap<>();
+
+                Future<Map> futureMap = Executors.newSingleThreadExecutor().submit(new Callable<Map>() {
                     @Override
                     public Map call() throws Exception {
-                        Map<String, String> map = new HashMap<>();
-                        map.put("Callable_2", "Callable_2");
-                        return map;
+                        return asyncRepository.getCallableMap_2(map);
                     }
                 });
                 // 결과값을 get()으로 꺼낼 때 까지 wait.
-                Map map = futureMap.get();
-                map.put("Callable_1", "Callable_1");
-                return map;
+                return asyncRepository.getCallableMap_1(futureMap.get());
             }
         };
 
@@ -77,10 +75,11 @@ public class Controller {
         for (String o : result.keySet()) {
             System.out.println(result.get(o));
         }
+
+        return result;
     }
 
-    @GetMapping("completableFuture")
-    public void asyncWithCompletableFuture() throws ExecutionException, InterruptedException {
+    public List asyncWithCompletableFuture() throws ExecutionException, InterruptedException {
         CompletableFuture<Map<String, String>> cf = new CompletableFuture<>();
 
         Thread thread = new Thread(new Runnable() {
@@ -98,27 +97,22 @@ public class Controller {
 
 
         // chaining 방법 //
+        // return 값을 받아올 객체 생성.
         List<String> list = new ArrayList<>();
-        list.add("start");
-
         // 각각의 스레드로 동작. 단, callback을 받아야 다음 단계로 넘어가기 때문에 아래 코드가 3개의 서브스레드를 사용한다고 하더라도
         // 한 개의 서브스레드를 사용하는 것과 크게 다르지 않음.
         List<String> result1 = cf.completedFuture(list) // complete 되면
-                                    .thenApply(msg -> getFirstApi(msg)) // callback을 받아서 메소드 실행
-                                    .thenApply(msg -> getSecondApi(msg)) // callback을 받아서 메소드 실행
-                                    .get();
+                .thenApply(msg -> asyncRepository.getFirstApi(msg)) // callback을 받아서 메소드 실행
+                .thenApply(msg -> asyncRepository.getSecondApi(msg)) // callback을 받아서 메소드 실행
+                .get();
 
         for (String s : result1) {
             System.out.println(s);
         }
+
+        return result1;
     }
 
-    public List<String> getFirstApi(List<String> msg){
-        msg.add("first");
-        return msg;
-    }
-    public List<String> getSecondApi(List<String> msg){
-        msg.add("second");
-        return msg;
-    }
+
+
 }
